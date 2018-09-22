@@ -1,0 +1,101 @@
+---
+title: "Oregon Waves"
+author: "Ken W."
+date: "9/13/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(rvest)
+library(tidyverse)
+library(plotly)
+
+```
+
+### [Station 46050 (LLNR 641) - STONEWALL BANK - 20NM West of Newport, OR](https://www.ndbc.noaa.gov/station_page.php?station=46050)
+
+
+```{r echo=FALSE}
+
+station <- "46029"
+noaa_url <- read_html(paste0("https://www.ndbc.noaa.gov/station_page.php?station=", station))
+
+# Get the lat/long
+noaa_lat_lng <- noaa_url %>%
+  html_nodes("#stn_metadata p b") %>%
+  .[[4]] %>%
+  html_text()
+
+noaa_lat <- as.numeric(str_split(noaa_lat_lng, " ")[[1]][1])
+noaa_lng <- as.numeric(str_split(noaa_lat_lng, " ")[[1]][3]) * -1
+  
+# Get the data
+noaa <- noaa_url %>%
+  html_node("#contenttable td#contentarea table.dataTable") %>%
+  html_table() 
+
+wvht_obvs <- gsub("-",NA,noaa[-1,7])
+
+wave_max = max(as.numeric(wvht_obvs), na.rm = TRUE)
+wave_min = min(as.numeric(wvht_obvs), na.rm = TRUE)
+wave_avg = mean(as.numeric(wvht_obvs), na.rm = TRUE)
+
+x <- c(1:length(wvht_obvs))
+y_waves <- as.numeric(wvht_obvs)
+
+data <- data.frame(x, y_waves)
+
+xaxis <- list(title = "",
+             showline = TRUE,
+             showgrid = FALSE,
+             showticklabels = TRUE,
+             linecolor = 'rgb(204, 204, 204)',
+             linewidth = 2,
+             autotick = FALSE,
+             ticks = 'outside',
+             tickcolor = 'rgb(204, 204, 204)',
+             tickwidth = 2,
+             ticklen = 5,
+             tickfont = list(family = 'Arial',
+                             size = 12,
+                             color = 'rgb(82, 82, 82)'))
+
+yaxis <- list(title = "",
+             showgrid = FALSE,
+             zeroline = FALSE,
+             showline = FALSE,
+             showticklabels = FALSE)
+
+margin <- list(autoexpand = FALSE,
+              l = 100,
+              r = 100,
+              t = 110)
+
+# Build the annotations
+
+obvs <- list(
+  xref = 'paper',
+  yref = 'y',
+  x = 0.05,
+  y = y_waves[1],
+  xanchor = 'right',
+  yanchor = 'bottom',
+  text = ~paste('Waves ', y_waves[1], 'ft'),
+  font = list(family = 'Arial',
+              size = 16,
+              color = 'rgba(67,67,67,1)'),
+  showarrow = FALSE)
+
+p <- plot_ly(data, x = ~x) %>%
+  add_trace(y = ~y_waves, type = 'scatter', mode = 'lines', line = list(color = 'rgba(42,82,190,1)', width = 2))  %>%
+  layout(title = "Recent 24 Observations", xaxis = xaxis, yaxis = yaxis, margin = margin,
+         autosize = FALSE,
+         showlegend = FALSE,
+         annotations = obvs)
+
+p
+
+```
+
